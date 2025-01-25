@@ -80,8 +80,8 @@ def save_coregistered_results(results, satellite,  result_json_path, settings):
 def coregister_file(im_reference, im_target,output_folder,modified_target_folder,coregister_settings):
     new_crs = None
     CRS_converted= False
-    
     coreg_result = {os.path.basename(im_target): make_coreg_info()}
+
     # Step 1. If the crs is not the same for the reference and the target, skip the coregistration
     if not check_crs(im_reference, im_target,raise_error=False):
         # create a subfolder in the output folder called "new_crs" and save the target image with the new crs
@@ -92,26 +92,17 @@ def coregister_file(im_reference, im_target,output_folder,modified_target_folder
         new_crs = str(new_crs)
         CRS_converted = True
         
-        coreg_result = {os.path.basename(im_target): make_coreg_info(CRS=new_crs,CRS_converted=True)}
-
-
     # Step 2. Read the current no data value of the target and convert it to a valid no data value
     #    - Invalid No Data Values : -inf, inf
     modified_target_path = os.path.join(modified_target_folder, os.path.basename(im_target))
     im_target = update_nodata_value(im_target, modified_target_path, new_nodata=0)
 
     # Step 3. Coregister the target to the reference
-    result = coregister_image(im_reference, im_target,output_folder,coregister_settings,verbose=True)
+    result = coregister_image(im_reference, im_target,output_folder,coregister_settings,verbose=coregister_settings.get("v",False))
 
     # update coreg_result with the result
     coreg_result.update(result)
-    # print(f"new crs: {new_crs}")
-    # print(f"CRS_converted : {CRS_converted}")
     coreg_result[os.path.basename(im_target)].update({'CRS': new_crs, 'CRS_converted':CRS_converted})
-    
-
-    # print(f"cog_result: {coreg_result}")
-
 
     return coreg_result
     
@@ -124,8 +115,6 @@ def coregister_files(tif_files, template_path, coregistered_dir,modified_target_
     
     for target_path in tqdm.tqdm(tif_files,desc=desc):
         result = coregister_file(template_path, target_path,coregistered_dir,modified_target_folder,coregister_settings)
-        print(f"Result: {result}")
-        # exit()
         results.append(result)
 
     return results
@@ -190,7 +179,7 @@ def get_filtered_dates_dict(directory: str, file_type: str, ) -> dict:
 
     return satellites
         
-def move_files_to_folder(filenames,source_folder,destination_folder,copy_only=False,move_only=False):
+def move_files_to_folder(filenames,source_folder,destination_folder,copy_only=False,move_only=False,verbose=False):
     if not os.path.exists(source_folder):
         raise FileNotFoundError(f"Source folder {source_folder} does not exist")
     
@@ -202,10 +191,12 @@ def move_files_to_folder(filenames,source_folder,destination_folder,copy_only=Fa
         if os.path.exists(src):
             if copy_only:
                 shutil.copy(src, dst)
-                print(f"Copied {filename} to {dst}")
+                if verbose:
+                    print(f"Copied {filename} to {dst}")
             elif move_only:
                 shutil.move(src, dst)
-                print(f"Moved {filename} to {dst}")
+                if verbose:
+                    print(f"Moved {filename} to {dst}")
 
         
 def scale_raster(input_path, output_path, scale_factor):
@@ -316,7 +307,7 @@ def check_crs(im_reference, im_target,raise_error=False):
             return False
     return True
 
-def coregister_image(im_reference, im_target,out_folder,coregister_settings,verbose=True):
+def coregister_image(im_reference, im_target,out_folder,coregister_settings,verbose=False):
     """
     Coregisters the target image to the reference image and saves the coregistered image to the specified output folder.
     Parameters:
@@ -348,7 +339,7 @@ def coregister_image(im_reference, im_target,out_folder,coregister_settings,verb
     coreg_result=make_coreg_info(CR)
     return {os.path.basename(path_out):coreg_result}
 
-def save_to_json(data, output_path,verbose=True):
+def save_to_json(data, output_path,verbose=False):
     # Save all coregistration results to a JSON file
     with open(output_path, 'w') as f:
         json.dump(data, f,cls=NumpyEncoder) 
