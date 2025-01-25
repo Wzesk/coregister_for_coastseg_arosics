@@ -42,7 +42,7 @@ coregister_settings = {
     "nodata":(0,0),
     "max_shift":100,
     "binary_ws":False, # This forces the window size to be a power of 2
-    "progress":True,  # This shows the progress of the coregistration
+    "progress":False,  # This shows the progress of the coregistration
     "v":False,         # This shows the verbose output
     "ignore_errors":True, # Useful for batch processing. In case of error COREG.success == False and COREG.x_shift_px/COREG.y_shift_px is None        
     "fmt_out": "GTiff",
@@ -72,7 +72,7 @@ pattern = '*MS_toar_clip.tif'
 # get files that match the pattern with glob
 tif_files = glob.glob(os.path.join(target_folder, pattern))
 # b. coregister the files
-coreg_results = coregister_files(tif_files,im_reference,output_folder,modified_target_folder,coregister_settings,desc="Coregistering Images")
+coreg_results = coregister_files(tif_files[:4],im_reference,output_folder,modified_target_folder,coregister_settings,desc="Coregistering Images")
 # c. add the settings to the coreg_results under the key "coregister_settings"
 coreg_results.append({"settings":coregister_settings})
 #d. merge the list of dictionaries into a single dictionary
@@ -88,12 +88,11 @@ save_to_json(coreg_results, json_save_path)
 csv_path = os.path.join(output_folder, "filtered_files.csv")
 df = filter_coregistration(json_save_path,output_folder,csv_path,filtering_settings)
 failed_coregs = list(df[~df['filter_passed']]['filename'].values)
-print(f"length of failed coregs: {len(failed_coregs)}")
 
 bad_folder = os.path.join(output_folder, "failed_coregistration")
 os.makedirs(bad_folder, exist_ok=True)
 
 failed_coregs = list(df[~df['filter_passed']]['filename'].values)
-print(f"length of failed coregs: {len(failed_coregs)}")
+print(f"Number of failed coregistrations: {len(failed_coregs)}")
 
 move_files_to_folder(failed_coregs,output_folder,bad_folder,move_only=True)
