@@ -15,4 +15,4 @@ conda install -c conda-forge arosics,gdal,coastsat_package,rasterio
 ```
 
 # Credits
-Thanks to arosics for making this possible.
+Thanks to [arosics](https://github.com/GFZ/arosics) for making this possible.
