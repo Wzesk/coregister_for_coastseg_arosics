@@ -20,7 +20,6 @@
 
 from helpers import *
 from arosics_filter import *
-import arosics
 import os
 import glob
 from tqdm import tqdm
@@ -52,15 +51,14 @@ filtering_settings = {
     'z_score_threshold': 2  # Threshold for z-score beyond which data points are considered outliers
 }
 
-# 1. Create a folder to save the coregistered images
-output_folder = "coregistered_planet"
+
 # This is the directory to save any of the targets that have been modified
 modified_target_folder = "modified_targets"
 modified_template_folder = "modified_templates"
   
-os.makedirs(output_folder, exist_ok=True)
 os.makedirs(modified_target_folder, exist_ok=True)
 os.makedirs(modified_template_folder, exist_ok=True)
+
 
 
 create_jpgs = True # Create jpgs for the files that passed the filtering
@@ -72,6 +70,8 @@ ROI_ID = ""
 session_dir = r'C:\development\doodleverse\coastseg\CoastSeg\data\ID_1_datetime11-04-24__04_30_52_original_mess_with'
 template_path = r"C:\development\doodleverse\coastseg\CoastSeg\data\ID_1_datetime11-04-24__04_30_52_original\L9\ms\2023-06-30-22-01-55_L9_ID_1_datetime11-04-24__04_30_52_ms.tif"
 sorted_jpg_path = r'C:\development\doodleverse\coastseg\CoastSeg\data\ID_1_datetime11-04-24__04_30_52_original_mess_with\jpg_files\preprocessed\RGB'
+
+
 
 # preprocess the reference image
 modified_reference_path = os.path.join(modified_template_folder, os.path.basename(template_path))
@@ -95,6 +95,8 @@ print(f"Satellites: {satellites}")
 # make a new coregistered directory to save everything in ( not a problem is it already exists)
 coregistered_dir= file_utils.create_coregistered_directory(session_dir,satellites)
 result_json_path = os.path.join(coregistered_dir, 'transformation_results.json')
+# path to save the csv with the results
+csv_path = os.path.join(coregistered_dir, "filtered_files.csv")
 
 # copy the config_gdf.geojson files to the coregistered directory
 shutil.copy(os.path.join(session_dir, 'config_gdf.geojson'), os.path.join(coregistered_dir, 'config_gdf.geojson'))
@@ -140,7 +142,7 @@ for satellite in tqdm(filtered_dates_by_sat.keys(),desc='Coregistering Satellite
 new_config_path = file_utils.save_coregistered_config(config_path,coregistered_dir,coregister_settings)
 
 #Step 6. Filter the coregistration results
-df = filter_coregistration(result_json_path,output_folder,filtering_settings)
+df = filter_coregistration(result_json_path,coregistered_dir,csv_path,filtering_settings)
 
 # Move the files that failed the filtering to a new directory in coregistered directory
 failed_coregs = df[~df['filter_passed']].groupby('satellite')['filename'].apply(list)

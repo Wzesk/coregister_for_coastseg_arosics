@@ -71,26 +71,10 @@ def filter_window_size(df, col_name:str = 'window_size', threshold:int = 50):
     )
     return df
 
-# OLD CODE
-# def filter_by_zscore(df,zscore_threshold:float = 2,combined_z_plot_filename: str = 'combined_z_scores.png', shifts_plot_filename: str = 'plot_outlier_shifts.png'):
-#     """
-#     Identify and plot outliers, add combined z-scores to the DataFrame, and plot the shifts.
-
-#     Args:
-#         df (pd.DataFrame): DataFrame containing 'shift_x' and 'shift_y' columns.
-#         z_threshold (float, optional): The z-score threshold to identify outliers. Defaults to 2.
-#         combined_z_plot_filename (str, optional): The filename to save the combined z-scores plot. Defaults to 'combined_z_scores.png'.
-#         shifts_plot_filename (str, optional): The filename to save the shifts plot. Defaults to 'plot_outlier_shifts.png'.
-
-#     Returns:
-#         pd.DataFrame: The updated DataFrame with combined z-scores added as a column.
-#     """
-#     df['shift_x'] = pd.to_numeric(df['shift_x'])
-#     df['shift_y'] = pd.to_numeric(df['shift_y'])
-#     df = filters.filter_by_z_score(df,zscore_threshold,combined_z_plot_filename,shifts_plot_filename)
-#     return df
-
-def filter_coregistration(results_path,output_folder, filter_settings: dict={}):
+def filter_coregistration(results_path,
+                          output_folder,
+                          csv_path,
+                          filter_settings):
     # read in the results
     with open(results_path, 'r') as f:
         results = json.load(f)
@@ -120,7 +104,7 @@ def filter_coregistration(results_path,output_folder, filter_settings: dict={}):
         # If filter_passed is True then the zscore will only be calculated for the passed images
         df = filters.filter_zscores(df, z_threshold=z_threshold, filter_passed_only=filter_z_score_filter_passed_only)
     
-    csv_path = os.path.join(output_folder, "filtered_coreg_results.csv")
+    csv_path = os.path.join(output_folder, "filtered_files.csv")
     df.to_csv(csv_path,index=False)
     print(f"Filtered coregistration results saved to {csv_path}")
     

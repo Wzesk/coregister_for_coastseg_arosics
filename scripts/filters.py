@@ -227,40 +227,6 @@ def filter_by_z_score(df: pd.DataFrame, z_threshold: float = 2, combined_z_plot_
     
     return df
 
-def filter_shifts_by_range(df: pd.DataFrame, min_shift_meters: tuple, max_shift_meters: tuple) -> pd.DataFrame:
-    """
-    Filter the DataFrame based on the given ranges for shift_x_meters and shift_y_meters.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing 'shift_x_meters' and 'shift_y_meters' columns.
-        min_shift_meters (tuple): Minimum allowed values for shift_x_meters and shift_y_meters.
-        max_shift_meters (tuple): Maximum allowed values for shift_x_meters and shift_y_meters.
-
-    Returns:
-        pd.DataFrame: The updated DataFrame with 'filter_passed' and 'filter_description' columns.
-    """
-    # Initialize filter_passed and filter_description columns if they don't exist
-    if 'filter_passed' not in df.columns:
-        df['filter_passed'] = True
-    if 'filter_description' not in df.columns:
-        df['filter_description'] = ''
-
-    # Filter only the rows where filter_passed is True
-    filter_mask = df['filter_passed']
-
-    # Filter based on shift_x_meters
-    df.loc[filter_mask & (df['shift_x_meters'] < min_shift_meters[0]), 'filter_passed'] = False
-    df.loc[filter_mask & (df['shift_x_meters'] < min_shift_meters[0]), 'filter_description'] += f'shift_x_meters below {min_shift_meters[0]}; '
-    df.loc[filter_mask & (df['shift_x_meters'] > max_shift_meters[0]), 'filter_passed'] = False
-    df.loc[filter_mask & (df['shift_x_meters'] > max_shift_meters[0]), 'filter_description'] += f'shift_x_meters exceeded {max_shift_meters[0]}; '
-
-    # Filter based on shift_y_meters
-    df.loc[filter_mask & (df['shift_y_meters'] < min_shift_meters[1]), 'filter_passed'] = False
-    df.loc[filter_mask & (df['shift_y_meters'] < min_shift_meters[1]), 'filter_description'] += f'shift_y_meters below {min_shift_meters[1]}; '
-    df.loc[filter_mask & (df['shift_y_meters'] > max_shift_meters[1]), 'filter_passed'] = False
-    df.loc[filter_mask & (df['shift_y_meters'] > max_shift_meters[1]), 'filter_description'] += f'shift_y_meters exceeded {max_shift_meters[1]}; '
-
-    return df
 
 def create_dataframe_with_satellites(results:dict):
     """
@@ -320,8 +286,6 @@ def create_dataframe_with_satellites(results:dict):
         if satellite == "settings":
             continue  # Skip the 'settings' section
         for filename, attributes in files.items():
-            print(f"filename: {filename}")
-            print(f"attributes: {attributes}")
             attributes['filename'] = filename
             attributes['satellite'] = satellite
             data.append(attributes)
@@ -334,76 +298,4 @@ def create_dataframe_with_satellites(results:dict):
     df.set_index('filename', inplace=True)
     return df
 
-def apply_filtering(results, output_path:str, settings:dict):
-    """
-    Processes transformation results from a JSON file, filters and identifies outliers,
-    and saves the filtered DataFrame to a new CSV file.
 
-    Args:
-        results(dict): Dictionary containing transformation results.
-        Either in the format
-        {
-            'L8': {
-                'filename1.tif': {'shift_x': 10.0, 'shift_y': 20.0, 'shift_x_meters': 100.0, 'shift_y_meters': 200.0, 'ssim': 0.95},
-                'filename2.tif': {'shift_x': -5.0, 'shift_y': 15.0, 'shift_x_meters': -50.0, 'shift_y_meters': 150.0, 'ssim': 0.92}
-            },
-            'L9': {
-                'filename1.tif': {'shift_x': 10.0, 'shift_y': 20.0, 'shift_x_meters': 100.0, 'shift_y_meters': 200.0, 'ssim': 0.95},
-            },
-            'settings': {'max_translation': 1000, 'min_translation': -1000, 'window_size': [256, 256]}
-        }
-        or
-        {
-            'filename1.tif': {'shift_x': 10.0, 'shift_y': 20.0, 'shift_x_meters': 100.0, 'shift_y_meters': 200.0, 'ssim': 0.95},
-            'filename2.tif': {'shift_x': -5.0, 'shift_y': 15.0, 'shift_x_meters': -50.0, 'shift_y_meters': 150.0, 'ssim': 0.92},
-            'settings': {'max_translation': 1000, 'min_translation': -1000, 'window_size': [256, 256]}
-        }   
-        output_path (str): Path to the transformation results JSON file.
-        settings (dict): A dictionary with the following keys:
-            - 'min_shift_meters' (tuple(float)): Minimum shift distance for filtering for x and y
-                Example: (-200, -200) for x and y respectively.
-            - 'max_shift_meters' (tuple(float)): Maximum shift distance for filtering for x and y
-                Example: (200, 200) for x and y respectively.
-            - 'z_threshold' (float): Z-score threshold for outlier detection. Set to None to disable.
-                This z score is the combined z score of shift_x and shift_y.
-                combined_z_score = sqrt(z_x^2 + z_y^2)
-
-    Returns:
-        str: Path to the saved filtered CSV file.
-    """
-    # Unpack settings
-    min_shift_meters = settings.get('min_shift_meters', float('-inf'))
-    max_shift_meters = settings.get('max_shift_meters', float('inf'))
-    z_threshold = settings.get('z_threshold', None)
-
-
-    try:
-        df = create_dataframe_with_satellites(results)
-    except Exception as e:
-        # check if the results is in the format {'filename': {'shift_x': 10.0, 'shift_y': 20.0, ..},'filename1': {'shift_x': 10.0, 'shift_y': 20.0, ..}}
-        df = pd.DataFrame(results).transpose()
-
-    df.fillna(0.0, inplace=True)
-
-    # Process and plot outliers (dummy placeholder, replace with your actual implementation)
-    if z_threshold:
-        df = filter_by_z_score(
-            df,
-            z_threshold=z_threshold,
-            combined_z_plot_filename='combined_z_scores.png',
-            shifts_plot_filename='plot_outlier_shifts.png'
-        )
-
-    # Filter shifts based on ranges (dummy placeholder, replace with your actual implementation)
-    df = filter_shifts_by_range(df, min_shift_meters, max_shift_meters)
-
-    # Modify DataFrame structure
-    df['filename'] = df.index
-    df.reset_index(drop=True, inplace=True)
-    df = df[['filename'] + [col for col in df.columns if col != 'filename']]
-
-    # Save to CSV
-    df.to_csv(output_path, index=False)
-    print(f"Filtered DataFrame saved to {output_path}")
-
-    return output_path
