@@ -364,7 +364,6 @@ def update_nodata_value(target_path, output_path, new_nodata=0):
         
         # Create output file with updated nodata value
         with rasterio.open(output_path, 'w', **meta) as dst:
-            print(f"meta: {meta}")
             # Iterate over each band in the raster file
             for i in range(1, src.count + 1):
                 # Read data from the current band

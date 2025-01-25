@@ -17,13 +17,13 @@ def filter_zscores(df: pd.DataFrame,z_threshold: float = 2,filter_passed_only= F
 
 
 def calculate_zscore(df: pd.DataFrame,  filter_passed_only= False) -> pd.Series:
-    df_clean = df[df['shift_y'].notna() & df['shift_x'].notna()]
+    df_clean = df[df["shift_y_meters"].notna() & df['shift_x_meters'].notna()]
     if filter_passed_only:
         df_clean = df_clean[df_clean['filter_passed']==True]
 
     # Extract shifts
-    x_shifts = df_clean['shift_x']
-    y_shifts = df_clean['shift_y']
+    x_shifts = df_clean['shift_x_meters']
+    y_shifts = df_clean["shift_y_meters"]
 
     # Calculate mean and standard deviation
     mu_x, sigma_x = np.mean(x_shifts), np.std(x_shifts)
@@ -32,13 +32,13 @@ def calculate_zscore(df: pd.DataFrame,  filter_passed_only= False) -> pd.Series:
     # Function to calculate combined z-score
     def calculate_z_score(row):
         if filter_passed_only:
-            if row['filter_passed'] and pd.notna(row['shift_x']) and pd.notna(row['shift_y']):
-                z_x = (row['shift_x'] - mu_x) / sigma_x
-                z_y = (row['shift_y'] - mu_y) / sigma_y if pd.notna(row['shift_y']) else 0  # Handle potential NaN in 'shift_y'
+            if row['filter_passed'] and pd.notna(row['shift_x_meters']) and pd.notna(row["shift_y_meters"]):
+                z_x = (row['shift_x_meters'] - mu_x) / sigma_x
+                z_y = (row["shift_y_meters"] - mu_y) / sigma_y if pd.notna(row["shift_y_meters"]) else 0  # Handle potential NaN in "shift_y_meters"
                 return np.sqrt(z_x**2 + z_y**2)
-        elif filter_passed_only==False and pd.notna(row['shift_x']) and pd.notna(row['shift_y']):
-            z_x = (row['shift_x'] - mu_x) / sigma_x
-            z_y = (row['shift_y'] - mu_y) / sigma_y if pd.notna(row['shift_y']) else 0  # Handle potential NaN in 'shift_y'
+        elif filter_passed_only==False and pd.notna(row['shift_x_meters']) and pd.notna(row["shift_y_meters"]):
+            z_x = (row['shift_x_meters'] - mu_x) / sigma_x
+            z_y = (row["shift_y_meters"] - mu_y) / sigma_y if pd.notna(row["shift_y_meters"]) else 0  # Handle potential NaN in "shift_y_meters"
             return np.sqrt(z_x**2 + z_y**2)
         else:
             return np.nan
@@ -54,14 +54,14 @@ def plot_shifts_with_outliers(df: pd.DataFrame, filename: str, z_threshold: floa
     Create a scatter plot of shifts with outliers highlighted and save it to a file.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'shift_x' and 'shift_y' columns.
+        df (pd.DataFrame): DataFrame containing 'shift_x_meters' and 'shift_y_meters' columns.
         filename (str): The name of the file to save the plot.
         z_threshold (float, optional): The z-score threshold to identify outliers. Defaults to 1.5.
     """
 
     # Extract shifts
-    x_shifts = df['shift_x']
-    y_shifts = df['shift_y']
+    x_shifts = df['shift_x_meters']
+    y_shifts = df['shift_y_meters']
 
     # get only the values not the row index
     x_shifts = x_shifts.values
@@ -126,7 +126,7 @@ def identify_and_plot_outliers(df: pd.DataFrame, z_threshold: float = 2, plot: b
     Identify outliers based on combined z-scores and optionally plot the z-scores.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'shift_x' and 'shift_y' columns.
+        df (pd.DataFrame): DataFrame containing 'shift_x_meters' and 'shift_y_meters' columns.
         z_threshold (float, optional): The z-score threshold to identify outliers. Defaults to 2.
         plot (bool, optional): Whether to plot the combined z-scores. Defaults to True.
         plot_filename (str, optional): The filename to save the plot. If None, the plot will not be saved.
@@ -137,8 +137,8 @@ def identify_and_plot_outliers(df: pd.DataFrame, z_threshold: float = 2, plot: b
         np.ndarray: Combined z-scores for each point.
     """
     # Extract shifts
-    x_shifts = df['shift_x']
-    y_shifts = df['shift_y']
+    x_shifts = df['shift_x_meters']
+    y_shifts = df['shift_y_meters']
 
     # Calculate mean and standard deviation
     mu_x, sigma_x = np.mean(x_shifts), np.std(x_shifts)
@@ -188,7 +188,7 @@ def filter_by_z_score(df: pd.DataFrame, z_threshold: float = 2, combined_z_plot_
     Identify and plot outliers, add combined z-scores to the DataFrame, and plot the shifts.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'shift_x' and 'shift_y' columns.
+        df (pd.DataFrame): DataFrame containing 'shift_x_meters' and 'shift_y_meters' columns.
         z_threshold (float, optional): The z-score threshold to identify outliers. Defaults to 2.
         combined_z_plot_filename (str, optional): The filename to save the combined z-scores plot. Defaults to 'combined_z_scores.png'.
         shifts_plot_filename (str, optional): The filename to save the shifts plot. Defaults to 'plot_outlier_shifts.png'.
