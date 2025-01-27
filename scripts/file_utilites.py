@@ -16,6 +16,72 @@ class Satellite(Enum):
     L9 = 'L9'
     S2 = 'S2'
 
+def get_root_name(file_path):
+    """
+    Gets the root name of a file (without the file extension).
+
+    Parameters:
+    file_path (str): The path to the file.
+
+    Returns:
+    str: The root name of the file.
+    """
+    return os.path.splitext(os.path.basename(file_path))[0]
+
+def delete_like_file(base_name, folder_path,verbose=False):
+    """
+    Deletes any files that contain the given base name in the specified folder.
+
+    Parameters:
+    base_name (str): The base name to search for in files.
+    folder_path (str): The path to the folder where the files are located.
+    verbose (bool): Whether to print messages about the deletion process. Defaults to False.
+    """
+    search_pattern = os.path.join(folder_path, f"*{base_name}*")
+    files_to_delete = glob.glob(search_pattern)
+    
+    if not files_to_delete:
+        if verbose:
+            print(f"No files found containing the base name: {base_name}")
+        return
+
+    for file_path in files_to_delete:
+        try:
+            os.remove(file_path)
+            if verbose:
+                print(f"Successfully deleted the file: {file_path}")
+        except Exception as e:
+            if verbose:
+                print(f"Error deleting file {file_path}: {e}")
+
+
+def delete_image(image_path):
+    """
+    Deletes a single image file if it exists.
+
+    Parameters:
+    image_path (str): The path to the image file to be deleted.
+    """
+    if os.path.exists(image_path):
+        os.remove(image_path)
+        print(f"Successfully deleted the image: {image_path}")
+    else:
+        print(f"Image does not exist: {image_path}")
+
+def delete_folder(folder_path):
+    """
+    Deletes a folder and all its contents.
+
+    Parameters:
+    folder_path (str): The path to the folder to be deleted.
+    """
+    try:
+        shutil.rmtree(folder_path)
+        print(f"Successfully deleted the folder: {folder_path}")
+    except Exception as e:
+        print(f"Error deleting folder {folder_path}: {e}")
+
+
 def save_coregistered_config(config_path,output_dir,settings:dict,new_config_path:str=""):
     #open the config.json file, modify it to save the coregistered directory as the new sitename and add the coregistered settings
     with open(config_path, 'r') as f:

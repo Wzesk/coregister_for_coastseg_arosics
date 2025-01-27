@@ -78,6 +78,35 @@ def save_coregistered_results(results, satellite,  result_json_path, settings):
 
 
 def coregister_file(im_reference, im_target,output_folder,modified_target_folder,coregister_settings):
+    """
+    Coregisters a target image to a reference image and handles CRS conversion and no data value updates needed to make the
+    files fully compatible for coregistration. The coregistered image is saved to the output folder.
+
+    Parameters:
+    im_reference (str): Path to the reference image.
+    im_target (str): Path to the target image to be coregistered.
+    output_folder (str): Path to the folder where the coregistered image will be saved.
+    modified_target_folder (str): Path to the folder where modified target images will be saved.
+    coregister_settings (dict): Dictionary containing settings for the coregistration process.
+    Returns:
+    dict: A dictionary containing coregistration results, including CRS information and whether CRS was converted.
+        Format:
+        {
+            "target_filename.tiff": { 'original_ssim': 0.0,
+                                    'coregistered_ssim': 0.0,
+                                    "change_ssim": 0.0,
+                                    'shift_x': 0,
+                                    'shift_y': 0,
+                                    'shift_x_meters': 0.0,
+                                    'shift_y_meters': 0.0,
+                                    'shift_reliability': False,
+                                    'window_size': [0, 0],
+                                    'success': False,
+                                    'CRS': CRS,
+                                    'CRS_converted':CRS_converted
+                                    }
+
+    """
     new_crs = None
     CRS_converted= False
     coreg_result = {os.path.basename(im_target): make_coreg_info()}
