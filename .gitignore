@@ -1,3 +1,5 @@
-# ignore any tifs files
+# Ignore any .tif files
 *.tif
 
+# Except those in the sample_data folder
+!sample_data/*.tif
