@@ -447,6 +447,7 @@ def convert_to_new_crs(reference_path, target_path, output_dir,keep_resolution=T
     with rasterio.open(target_path) as target:
         src_crs = target.crs
         target_meta = target.meta.copy()
+        no_data = target.nodata
         # Calculate the transformation parameters
         if keep_resolution:
             transform, width, height = calculate_default_transform(
@@ -461,7 +462,8 @@ def convert_to_new_crs(reference_path, target_path, output_dir,keep_resolution=T
             'transform': transform,
             'crs': ref_crs,
             'width': width,
-            'height': height
+            'height': height,
+            'nodata': no_data
         })
 
         # Create output file and perform resampling
@@ -477,67 +479,10 @@ def convert_to_new_crs(reference_path, target_path, output_dir,keep_resolution=T
                     dst_transform=transform,
                     dst_crs=ref_crs,
                     resampling=Resampling.bilinear,
+                src_nodata=no_data,  # Specify source no-data
+                dst_nodata=no_data,  # Specify destination no-data
                 )
     return output_path,ref_crs
-
-# def convert_to_new_crs(reference_path, target_path, output_dir):
-#     """
-#     Matches the Coordinate Reference System (CRS) of the target image to that of the reference image and saves the resampled image.
-#     NOTE: THIS CHANGES THE RESOLUTION OF THE TARGET IMAGE
-    
-#     Parameters:
-#     reference_path (str): Path to the reference image file.
-#     target_path (str): Path to the target image file that needs to be resampled.
-#     output_dir (str): Directory where the resampled image will be saved.
-#     Returns:
-#     str: Path to the resampled image with the matched CRS.
-#     """
-#     # Derive output path from target path and output directory
-#     filename = os.path.basename(target_path)
-
-#     # Create the output directory if it does not exist
-#     os.makedirs(output_dir, exist_ok=True)
-
-#     output_path = os.path.join(output_dir, filename.split('.')[0] + '_crs.tif')
-#     print(f"Save resampled image to {output_path}")
-    
-#     # Open the reference image to get CRS and nodata values
-#     with rasterio.open(reference_path) as ref:
-#         ref_crs = ref.crs
-#         ref_nodata = ref.nodata
-        
-
-#     # Open the target image and update metadata to match reference CRS
-#     with rasterio.open(target_path) as target:
-#         src_crs = target.crs
-#         target_meta = target.meta.copy()
-#         # Calculate the transformation parameters
-#         transform, width, height = calculate_default_transform(
-#             src_crs, ref_crs, target.width, target.height, *target.bounds
-#         )
-#         target_meta.update({
-#             'driver': 'GTiff',
-#             'transform': transform,
-#             'crs': ref_crs,
-#         })
-
-#         # Create output file and perform resampling
-#         with rasterio.open(output_path, 'w', **target_meta, 
-#         ) as dst:
-#             for i in range(1, target.count + 1):  # Iterate over each band
-#                 target_band = target.read(i)
-#                 reproject(
-#                     source=target_band,
-#                     destination=rasterio.band(dst, i),
-#                     src_transform=target.transform,
-#                     src_crs=target.crs,
-#                     dst_transform=transform,
-#                     dst_crs=ref_crs,
-#                     src_nodata=ref_nodata,
-#                     dst_nodata=ref_nodata,
-#                 )
-#     print(f"Output path: {output_path}")
-#     return output_path
 
 
 def resample_img(template_path, target_path, output_path):
