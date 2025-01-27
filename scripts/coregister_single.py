@@ -36,15 +36,6 @@ coregister_settings = {
     "ignore_errors":True, # Useful for batch processing. In case of error COREG.success == False and COREG.x_shift_px/COREG.y_shift_px is None        
     "fmt_out": "GTiff",
 }
-# Step 2b. Make a set of settings to filter the coregistration results
-filtering_settings = {
-    'shift_reliability': 40,  # Default minimum threshold for shift reliability percentage. 
-    'window_size': 50,  # Minimum size of the window used to calculate coregistration shifts in pixels (smaller is worse)
-    'max_shift_meters': 250,  # Default maximum allowable shift in meters
-    'filter_z_score': True,  # Flag to determine if z-score filtering should be applied
-    'filter_z_score_filter_passed_only': False,  # Flag to apply z-score filtering only to data that has passed previous filters
-    'z_score_threshold': 2  # Threshold for z-score beyond which data points are considered outliers
-}
 
 # Step 3. Define the reference and target images
 im_reference = "sample_data/2023-06-30-22-01-55_L9_ms.tif"
@@ -55,14 +46,12 @@ modified_reference_path = os.path.join(modified_template_folder, os.path.basenam
 # arosics cannot handle -inf as a no data value so we set it to 0 (Note make sure that this matches the no data value in the coregister settings)
 im_reference = update_nodata_value(im_reference, modified_reference_path, new_nodata=0)
 
-
-
 # Step 4. Coregister the images in the target folder
 coreg_result =coregister_file(im_reference,im_target,output_folder,modified_target_folder,coregister_settings)
 coreg_result.update({"settings":coregister_settings})
 
 # Step 5. Save the coregistered Result to a json file
-json_save_path = os.path.join(output_folder, "coreg_result_single.json")
+json_save_path = os.path.join(output_folder, "coreg_result.json")
 print(f"Saving the coregistered results to {json_save_path}")
 save_to_json(coreg_result, json_save_path)
 
