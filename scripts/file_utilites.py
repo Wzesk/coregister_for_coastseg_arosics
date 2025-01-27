@@ -81,6 +81,23 @@ def delete_folder(folder_path):
     except Exception as e:
         print(f"Error deleting folder {folder_path}: {e}")
 
+def delete_folder_contents(folder_path):
+    """
+    Deletes all contents of a folder without deleting the folder itself.
+
+    Parameters:
+    folder_path (str): The path to the folder whose contents are to be deleted.
+    """
+    try:
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        print(f"Successfully deleted the contents of the folder: {folder_path}")
+    except Exception as e:
+        print(f"Error deleting contents of folder {folder_path}: {e}")
 
 def save_coregistered_config(config_path,output_dir,settings:dict,new_config_path:str=""):
     #open the config.json file, modify it to save the coregistered directory as the new sitename and add the coregistered settings
