@@ -11,7 +11,7 @@ This is a set of scripts that uses the arosics package to allow users to perform
 ```
 conda create -n coreg python=3.11 -y
 conda activate coreg
-conda install -c conda-forge arosics,gdal,coastsat_package,rasterio
+conda install -c conda-forge arosics gdal coastsat_package rasterio
 ```
 
 # Credits
