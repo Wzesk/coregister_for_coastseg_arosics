@@ -11,6 +11,8 @@ import re
 import tqdm
 from collections import OrderedDict
 from enum import Enum
+from tempfile import NamedTemporaryFile
+from shutil import move
 
 def find_satellite_in_filename(filename: str) -> str:
     """Use regex to find the satellite name in the filename.
@@ -76,6 +78,18 @@ def save_coregistered_results(results, satellite,  result_json_path, settings):
 
     return results_ordered
 
+def get_crs(image_path):
+    """
+    Get the Coordinate Reference System (CRS) of an image file.
+
+    Parameters:
+    image_path (str): Path to the image file.
+
+    Returns:
+    str: The CRS of the image.
+    """
+    with rasterio.open(image_path) as img:
+        return img.crs
 
 def coregister_file(im_reference, im_target,output_folder,modified_target_folder,coregister_settings):
     """
@@ -111,20 +125,26 @@ def coregister_file(im_reference, im_target,output_folder,modified_target_folder
     CRS_converted= False
     coreg_result = {os.path.basename(im_target): make_coreg_info()}
 
+    modified_target_path = os.path.join(modified_target_folder, os.path.basename(im_target))
+    os.makedirs(modified_target_folder, exist_ok=True)
+
     # Step 1. If the crs is not the same for the reference and the target, skip the coregistration
     if not check_crs(im_reference, im_target,raise_error=False):
         # create a subfolder in the output folder called "new_crs" and save the target image with the new crs
         new_crs_folder = os.path.join(modified_target_folder, 'new_crs')
         os.makedirs(new_crs_folder, exist_ok=True)
-        im_target,new_crs = convert_to_new_crs(im_reference, im_target, new_crs_folder,keep_resolution=True)
-        # convert new crs to string
+        new_crs = get_crs(im_reference)
         new_crs = str(new_crs)
+        im_target = convert_to_new_crs(im_target, new_crs,output_path=modified_target_path, keep_resolution=True)
         CRS_converted = True
         
     # Step 2. Read the current no data value of the target and convert it to a valid no data value
     #    - Invalid No Data Values : -inf, inf
-    modified_target_path = os.path.join(modified_target_folder, os.path.basename(im_target))
-    im_target = update_nodata_value(im_target, modified_target_path, new_nodata=0)
+
+    if os.path.exists(modified_target_path):
+        im_target = update_nodata_value( target_path = modified_target_path, new_nodata=0)
+    else:
+        im_target = update_nodata_value( target_path = im_target,output_path=modified_target_path, new_nodata=0)
 
     # Step 3. Coregister the target to the reference
     result = coregister_image(im_reference, im_target,output_folder,coregister_settings,verbose=coregister_settings.get("v",False))
@@ -329,7 +349,7 @@ def check_crs(im_reference, im_target,raise_error=False):
     ValueError: If raise_error is True and the CRS of the reference and target images are different.
     """
     if read_crs(im_reference) != read_crs(im_target):
-        print("Cannot coregister images with different CRS")
+        # print("Cannot coregister images with different CRS")
         if raise_error:
             raise ValueError("The CRS of the reference and target images are different")
         else:
@@ -375,38 +395,93 @@ def save_to_json(data, output_path,verbose=False):
     if verbose:
         print(f"Saved coregistration results to {output_path}")  
 
-def update_nodata_value(target_path, output_path, new_nodata=0):
+
+def update_nodata_value(target_path, output_path=None,new_nodata=0, ):
     """
-    Change the nodata value of a raster image.
+    Change the nodata value of a raster image and either overwrite the original or write to a specified path.
+
+    Parameters:
+    target_path (str): Path to the target image file whose nodata value needs to be updated.
+    new_nodata (int or float): The new nodata value to set in the raster.
+    output_path (str, optional): Path where the updated image should be saved. If not provided, the original file is overwritten.
+
+    Returns:
+    str: Path to the raster image with the updated nodata value.
     """
 
-    with rasterio.open(target_path) as src:
-        # Copy metadata from the source file
-        meta = src.meta.copy()
+    # Determine the output file path; use a temporary file if no specific output path is provided
+    if output_path is None:
+        temp_file = NamedTemporaryFile(delete=False, suffix='.tif')
+        output_file_path = temp_file.name
+        temp_file.close()  # Close the file so rasterio can open it
+    else:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_file_path = output_path
 
-        # # if the new nodata value is the same as the old nodata value, return the target path
-        # if new_nodata == src.nodata:
-        #     return target_path
-        
-        # Update the nodata value in metadata
-        meta.update({'nodata': new_nodata})
-        
-        # Create output file with updated nodata value
-        with rasterio.open(output_path, 'w', **meta) as dst:
-            # Iterate over each band in the raster file
-            for i in range(1, src.count + 1):
-                # Read data from the current band
-                data = src.read(i)
-                
-                # Replace the old nodata value with the new nodata value
-                old_nodata = src.nodata
-                if old_nodata is not None:  # Ensure there's a nodata value to replace
-                    data[data == old_nodata] = new_nodata
-                
-                # Write updated data to the output file
-                dst.write(data, i)
+    try:
+        with rasterio.open(target_path) as src:
+            meta = src.meta.copy()
+            old_nodata = src.nodata
 
-    return output_path
+            # Update the nodata value in the metadata
+            meta['nodata'] = new_nodata
+
+            with rasterio.open(output_file_path, 'w', **meta) as dst:
+                for i in range(1, src.count + 1):
+                    data = src.read(i)
+
+                    # Replace the old nodata value with the new nodata value if there was one originally
+                    if old_nodata is not None:
+                        data[data == old_nodata] = new_nodata
+
+                    dst.write(data, i)
+
+        # If no specific output path was given, replace the original file
+        if output_path is None:
+            os.remove(target_path)
+            move(output_file_path, target_path)
+            output_file_path = target_path
+
+        return output_file_path
+
+    except Exception as e:
+        if output_path is None:
+            os.remove(output_file_path)  # Clean up temporary file on failure
+        raise RuntimeError(f"Failed to update nodata value: {e}")
+
+
+# def update_nodata_value(target_path, output_path, new_nodata=0):
+#     """
+#     Change the nodata value of a raster image.
+#     """
+
+#     with rasterio.open(target_path) as src:
+#         # Copy metadata from the source file
+#         meta = src.meta.copy()
+
+#         # # if the new nodata value is the same as the old nodata value, return the target path
+#         # if new_nodata == src.nodata:
+#         #     return target_path
+        
+#         # Update the nodata value in metadata
+#         meta.update({'nodata': new_nodata})
+        
+#         # Create output file with updated nodata value
+#         with rasterio.open(output_path, 'w', **meta) as dst:
+#             # Iterate over each band in the raster file
+#             for i in range(1, src.count + 1):
+#                 # Read data from the current band
+#                 data = src.read(i)
+                
+#                 # Replace the old nodata value with the new nodata value
+#                 old_nodata = src.nodata
+#                 if old_nodata is not None:  # Ensure there's a nodata value to replace
+#                     data[data == old_nodata] = new_nodata
+                
+#                 # Write updated data to the output file
+#                 dst.write(data, i)
+
+#     return output_path
 
 def read_crs(path):
     """
@@ -419,70 +494,157 @@ def read_crs(path):
     with rasterio.open(path) as img:
         return img.crs
 
-def convert_to_new_crs(reference_path, target_path, output_dir,keep_resolution=True):
+def convert_to_new_crs(target_path, ref_crs, output_path=None, keep_resolution=True):
     """
-    Matches the Coordinate Reference System (CRS) of the target image to that of the reference image and saves the resampled image.
+    Matches the Coordinate Reference System (CRS) of the target image to a specified CRS,
+    optionally overwriting the original image or writing to a specified output path.
+
+    If keep_resolution is True, the resolution of the target image is maintained.
+    If keep_resolution is False, the resolution of the target image is changed to match the reference CRS.
+
     NOTE: IF KEEP RESOLUTION IS FALSE THIS CHANGES THE RESOLUTION OF THE TARGET IMAGE
-
     NOTE: THIS WILL CHANGE THE WIDTH AND HEIGHT OF THE TARGET IMAGE
-
     # IF KEEP RESOLUTION IS FALSE THE RESOLUTION,WIDTH AND HEIGHT OF THE TARGET IMAGE WILL BE CHANGED
     
     Parameters:
-    reference_path (str): Path to the reference image file.
     target_path (str): Path to the target image file that needs to be resampled.
-    output_dir (str): Directory where the resampled image will be saved.
-    keep_resolution (bool): If True, the resolution of the target image is maintained. Default is True.
+    ref_crs (str): Reference CRS to which the target image should be matched.
+    output_path (str, optional): If provided, the directory where the resampled image will be saved. 
+                                 If not provided, the original image will be overwritten.
+    keep_resolution (bool): If True, maintains the resolution of the target image. Default is True.
+
     Returns:
     str: Path to the resampled image with the matched CRS.
     """
-    # Create the output directory if it does not exist
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, os.path.basename(target_path))
-    # Open the reference image to get CRS and nodata values
-    with rasterio.open(reference_path) as ref:
-        ref_crs = ref.crs
-        
-    # Open the target image and update metadata to match reference CRS
-    with rasterio.open(target_path) as target:
-        src_crs = target.crs
-        target_meta = target.meta.copy()
-        no_data = target.nodata
-        # Calculate the transformation parameters
-        if keep_resolution:
-            transform, width, height = calculate_default_transform(
-                src_crs, ref_crs, target.width, target.height, *target.bounds,resolution=target.res
-            )
-        else:
-            transform, width, height = calculate_default_transform(
-                src_crs, ref_crs, target.width, target.height, *target.bounds)
-            
-        target_meta.update({
-            'driver': 'GTiff',
-            'transform': transform,
-            'crs': ref_crs,
-            'width': width,
-            'height': height,
-            'nodata': no_data
-        })
+    # Determine output file path
+    if output_path is None:
+        temp_file = NamedTemporaryFile(delete=False, suffix='.tif')
+        output_file_path = temp_file.name
+        temp_file.close()  # Close to allow opening by rasterio
+    else:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_file_path = output_path
 
-        # Create output file and perform resampling
-        with rasterio.open(output_path, 'w', **target_meta, 
-        ) as dst:
-            for i in range(1, target.count + 1):  # Iterate over each band
-                target_band = target.read(i)
-                reproject(
-                    source=target_band,
-                    destination=rasterio.band(dst, i),
-                    src_transform=target.transform,
-                    src_crs=target.crs,
-                    dst_transform=transform,
-                    dst_crs=ref_crs,
-                    resampling=Resampling.bilinear,
-                src_nodata=no_data,  # Specify source no-data
-                dst_nodata=no_data,  # Specify destination no-data
-                )
-    return output_path,ref_crs
+    try:
+        # Open the target image to update metadata and perform resampling
+        with rasterio.open(target_path) as target:
+            src_crs = target.crs
+            target_meta = target.meta.copy()
+            no_data = target.nodata  # Capture no-data value from the target
+
+            # Calculate transformation parameters
+            if keep_resolution:
+                transform, width, height = calculate_default_transform(
+                    src_crs, ref_crs, target.width, target.height, *target.bounds, resolution=target.res)
+            else:
+                transform, width, height = calculate_default_transform(
+                    src_crs, ref_crs, target.width, target.height, *target.bounds)
+
+            # Update metadata with new CRS, dimensions, and no-data value
+            target_meta.update({
+                'driver': 'GTiff',
+                'crs': ref_crs,
+                'transform': transform,
+                'width': width,
+                'height': height,
+                'nodata': no_data
+            })
+
+            # Write resampled data to output file
+            with rasterio.open(output_file_path, 'w', **target_meta) as dst:
+                for i in range(1, target.count + 1):
+                    target_band = target.read(i)
+                    reproject(
+                        source=target_band,
+                        destination=rasterio.band(dst, i),
+                        src_transform=target.transform,
+                        src_crs=src_crs,
+                        dst_transform=transform,
+                        dst_crs=ref_crs,
+                        resampling=Resampling.bilinear,
+                        src_nodata=no_data,
+                        dst_nodata=no_data
+                    )
+
+        # If no specific output path was given, replace the original file
+        if output_path is None:
+            os.remove(target_path)
+            move(output_file_path, target_path)
+            output_file_path = target_path
+
+        return output_file_path
+
+    except Exception as e:
+        if output_path is None:
+            os.remove(output_file_path)  # Clean up temporary file on failure
+        raise RuntimeError(f"Failed to resample the file: {e}")
+
+
+# def convert_to_new_crs(reference_path, target_path, output_dir,keep_resolution=True):
+#     """
+#     Matches the Coordinate Reference System (CRS) of the target image to that of the reference image and saves the resampled image.
+#     NOTE: IF KEEP RESOLUTION IS FALSE THIS CHANGES THE RESOLUTION OF THE TARGET IMAGE
+
+#     NOTE: THIS WILL CHANGE THE WIDTH AND HEIGHT OF THE TARGET IMAGE
+
+#     # IF KEEP RESOLUTION IS FALSE THE RESOLUTION,WIDTH AND HEIGHT OF THE TARGET IMAGE WILL BE CHANGED
+    
+#     Parameters:
+#     reference_path (str): Path to the reference image file.
+#     target_path (str): Path to the target image file that needs to be resampled.
+#     output_dir (str): Directory where the resampled image will be saved.
+#     keep_resolution (bool): If True, the resolution of the target image is maintained. Default is True.
+#     Returns:
+#     str: Path to the resampled image with the matched CRS.
+#     """
+#     # Create the output directory if it does not exist
+#     os.makedirs(output_dir, exist_ok=True)
+#     output_path = os.path.join(output_dir, os.path.basename(target_path))
+#     # Open the reference image to get CRS and nodata values
+#     with rasterio.open(reference_path) as ref:
+#         ref_crs = ref.crs
+        
+#     # Open the target image and update metadata to match reference CRS
+#     with rasterio.open(target_path) as target:
+#         src_crs = target.crs
+#         target_meta = target.meta.copy()
+#         no_data = target.nodata
+#         # Calculate the transformation parameters
+#         if keep_resolution:
+#             transform, width, height = calculate_default_transform(
+#                 src_crs, ref_crs, target.width, target.height, *target.bounds,resolution=target.res
+#             )
+#         else:
+#             transform, width, height = calculate_default_transform(
+#                 src_crs, ref_crs, target.width, target.height, *target.bounds)
+            
+#         target_meta.update({
+#             'driver': 'GTiff',
+#             'transform': transform,
+#             'crs': ref_crs,
+#             'width': width,
+#             'height': height,
+#             'nodata': no_data
+#         })
+
+#         # Create output file and perform resampling
+#         with rasterio.open(output_path, 'w', **target_meta, 
+#         ) as dst:
+#             for i in range(1, target.count + 1):  # Iterate over each band
+#                 target_band = target.read(i)
+#                 reproject(
+#                     source=target_band,
+#                     destination=rasterio.band(dst, i),
+#                     src_transform=target.transform,
+#                     src_crs=target.crs,
+#                     dst_transform=transform,
+#                     dst_crs=ref_crs,
+#                     resampling=Resampling.bilinear,
+#                 src_nodata=no_data,  # Specify source no-data
+#                 dst_nodata=no_data,  # Specify destination no-data
+#                 )
+#     return output_path,ref_crs
+
 
 
 def resample_img(template_path, target_path, output_path):

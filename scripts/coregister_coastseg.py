@@ -133,7 +133,13 @@ for satellite in tqdm(filtered_dates_by_sat.keys(),desc='Coregistering Satellite
     
     output_dir = os.path.join(coregistered_dir,satellite,'ms') # directory to save coregistered files to
     # coregister all the tif files for this satellite
+    os.makedirs(modified_target_folder, exist_ok=True)
     results[satellite] = coregister_files(tif_files, template_path, output_dir,modified_target_folder, coregister_settings,desc=f'Detecting shifts for {satellite} files:')
+    
+    # remove the modified target files for that satellite
+    file_utils.delete_folder(modified_target_folder)
+
+
     # after each set of tif files are coregistered, save the results
 
     save_coregistered_results(results, satellite,  result_json_path, coregister_settings.copy().update({ 'template_path': template_path}))
