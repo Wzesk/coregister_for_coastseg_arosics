@@ -1,4 +1,4 @@
-# coregister_for_coastseg_arosics
+# CoastSeg Extentsion: Arosics for Coregistration 
 
 This script collection utilizes the arosics package to enable global co-registration for directories containing TIFF files. Included are specialized scripts tailored for integration with CoastSeg sessions as well as additional scripts to co-register imagery.
 
