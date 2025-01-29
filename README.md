@@ -1,6 +1,6 @@
 # coregister_for_coastseg_arosics
 
-This is a set of scripts that uses the arosics package to allow users to perform global coregistration on folders on tiffs. This colleciton of scripts includes some that are designed to work specifically with CoastSeg sessions. 
+This script collection utilizes the arosics package to enable global co-registration for directories containing TIFF files. Included are specialized scripts tailored for integration with CoastSeg sessions as well as additional scripts to co-register imagery.
 
 ## Compatible Satellites
 - PlanetScope
