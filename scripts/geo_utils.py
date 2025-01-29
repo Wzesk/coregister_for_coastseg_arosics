@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import rasterio
+from tqdm import tqdm
 from rasterio.transform import Affine
 from rasterio.warp import reproject, Resampling
 from rasterio.warp import reproject, calculate_default_transform
@@ -195,7 +196,7 @@ def apply_shifts_to_files_planet(df: pd.DataFrame, valid_files: list, src_dir: s
 
 def apply_shifts_for_satellites(df,passed_coregs,coreg_dir,unregistered_dir,satellites:list[str],verbose:bool=False):
     # make a subdirectory for each satellite
-    for satname in satellites:
+    for satname in tqdm(satellites,desc = "Applying shifts 'mask','pan', and 'swir' folders for all the satellites"):
         mask_dir = os.path.join(unregistered_dir, satname, 'mask')
         apply_shifts_to_satellite_files(df, passed_coregs, mask_dir, coreg_dir, satname, 'mask',verbose=verbose)
         if satname == 'S2':
