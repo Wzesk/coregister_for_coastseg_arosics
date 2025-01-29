@@ -6,9 +6,9 @@ This repository includes functions that can be used to:
 1. Perform global coregistration with arosics
 2. Filter out bad coregisteration results 
 3. Apply coregisteration to coastseg sessions
-  - Coregisters each satellite's tiff files within a CoastSeg session
-  - Creates new jpgs based on the coregistered files
-  - Saves all the coregistered files to a new directory
+    - Coregisters each satellite's tiff files within a CoastSeg session
+    - Creates new jpgs based on the coregistered files
+    - Saves all the coregistered files to a new directory
 
 ## Compatible Satellites
 - PlanetScope
