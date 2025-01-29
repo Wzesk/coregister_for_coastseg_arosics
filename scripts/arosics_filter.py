@@ -9,6 +9,15 @@ import filters
 
 # convert dict to dataframe
 def coreg_dict_to_dataframe(dict_data):
+    """
+    Converts a dictionary of coregistration data to a pandas DataFrame.
+    
+    Parameters:
+    dict_data (dict): Dictionary containing coregistration data.
+    
+    Returns:
+    pandas.DataFrame: DataFrame containing the coregistration data.
+    """
     if "settings" in dict_data.keys():
         dict_data.pop("settings")
 
@@ -26,6 +35,16 @@ def coreg_dict_to_dataframe(dict_data):
     return df
 
 def filter_out_nones(df, col_name:str = 'coregistered_ssim'):
+    """
+    Filters out rows where the specified column has None values.
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame to filter.
+    col_name (str): Name of the column to check for None values.
+    
+    Returns:
+    pandas.DataFrame: DataFrame with rows filtered based on None values.
+    """
     if 'filter_passed' not in df.columns:
         df['filter_passed'] = True
     
@@ -35,6 +54,17 @@ def filter_out_nones(df, col_name:str = 'coregistered_ssim'):
     return df
     
 def filter_by_shift_reliability(df, col_name:str = 'shift_reliability', threshold:float = 40):
+    """
+    Filters rows based on the shift reliability threshold.
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame to filter.
+    col_name (str): Name of the column to check for shift reliability.
+    threshold (float): Threshold value for shift reliability.
+    
+    Returns:
+    pandas.DataFrame: DataFrame with rows filtered based on shift reliability.
+    """
     if 'filter_passed' not in df.columns:
         df['filter_passed'] = True
     
@@ -46,6 +76,16 @@ def filter_by_shift_reliability(df, col_name:str = 'shift_reliability', threshol
 
     
 def filter_by_max_shift_meters(df, threshold: float = 200):
+    """
+    Filters rows based on the maximum shift in meters.
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame to filter.
+    threshold (float): Threshold value for maximum shift in meters.
+    
+    Returns:
+    pandas.DataFrame: DataFrame with rows filtered based on maximum shift in meters.
+    """
     if 'filter_passed' not in df.columns:
         df['filter_passed'] = True
 
@@ -60,6 +100,17 @@ def filter_by_max_shift_meters(df, threshold: float = 200):
 
 
 def filter_window_size(df, col_name:str = 'window_size', threshold:int = 50):
+    """
+    Filters rows based on the window size threshold.
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame to filter.
+    col_name (str): Name of the column to check for window size.
+    threshold (int): Threshold value for window size.
+    
+    Returns:
+    pandas.DataFrame: DataFrame with rows filtered based on window size.
+    """
     if 'filter_passed' not in df.columns:
         df['filter_passed'] = True
 
@@ -75,6 +126,24 @@ def filter_coregistration(results_path,
                           output_folder,
                           csv_path,
                           filter_settings):
+    """
+    Filters coregistration results based on specified filter settings and saves the filtered results to a CSV file.
+    
+    Parameters:
+    results_path (str): Path to the JSON file containing coregistration results.
+    output_folder (str): Path to the folder where the filtered CSV file will be saved.
+    csv_path (str): Path to the CSV file to save the filtered results.
+    filter_settings (dict): Dictionary containing filter settings with the following keys:
+        - 'shift_reliability' (float, optional): Threshold for shift reliability.
+        - 'window_size' (int, optional): Threshold for window size.
+        - 'max_shift_meters' (float, optional): Threshold for maximum shift in meters.
+        - 'filter_z_score' (bool, optional): Whether to filter by z-score.
+        - 'z_score_threshold' (float, optional): Threshold for z-score filtering.
+        - 'filter_z_score_filter_passed_only' (bool, optional): Whether to apply z-score filtering only to passed images.
+    
+    Returns:
+    pandas.DataFrame: DataFrame containing the filtered coregistration results.
+    """
     # read in the results
     with open(results_path, 'r') as f:
         results = json.load(f)
