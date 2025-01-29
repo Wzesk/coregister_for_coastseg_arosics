@@ -16,12 +16,19 @@ This repository includes functions that can be used to:
 - Sentinel-2 (S2)
 
 ## Install Instructions
-To set up your environment for using these scripts, follow these steps:
+1. To set up your environment for using these scripts, follow these steps:
 ```bash
 conda create -n coreg python=3.11 -y
 conda activate coreg
 conda install -c conda-forge arosics gdal coastsat-package rasterio
 ```
+
+2. Activate your environment and git clone
+```bash
+conda activate coreg
+git clone https://github.com/2320sharon/coregister_for_coastseg_arosics.git
+cd coregister_for_coastseg_arosics
+```   
 
 # Getting Started
 
