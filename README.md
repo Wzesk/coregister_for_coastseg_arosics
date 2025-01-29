@@ -11,6 +11,10 @@ This repository includes functions that can be used to:
     - Saves all the coregistered files to a new directory
 
 ## Compatible Satellites
+
+The scripts included in this repository have only been tested with the following tiffs.
+Landsat 7 support is not included due to the striping glitch across much of the dataset.
+
 - PlanetScope
 - Landsat 5, 8, 9
 - Sentinel-2 (S2)
