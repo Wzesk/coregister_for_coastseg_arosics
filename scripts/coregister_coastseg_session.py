@@ -41,7 +41,7 @@ coregister_settings = {
     "ignore_errors":True, # Useful for batch processing. In case of error COREG.success == False and COREG.x_shift_px/COREG.y_shift_px is None        
     "fmt_out": "GTiff",
 }
-# Step 2. Make a set of settings to filter the coregistration results
+# Step 1b. Make a set of settings to filter the coregistration results
 filtering_settings = {
     'shift_reliability': 40,  # Default minimum threshold for shift reliability percentage. 
     'window_size': 50,  # Minimum size of the window used to calculate coregistration shifts in pixels (smaller is worse)
@@ -50,7 +50,8 @@ filtering_settings = {
     'filter_z_score_filter_passed_only': False,  # Flag to apply z-score filtering only to data that has passed previous filters
     'z_score_threshold': 2  # Threshold for z-score beyond which data points are considered outliers
 }
-
+# Step 1c. Choose whether to pansharpen all bands or use the CoastSat pansharpening method to create jgps
+pansharpen_all_bands = True # If true, pansharpens all bands before creating jpgs
 
 # This is the directory to save any of the targets that have been modified
 modified_target_folder = "modified_targets"
@@ -59,12 +60,10 @@ modified_template_folder = "modified_templates"
 os.makedirs(modified_target_folder, exist_ok=True)
 os.makedirs(modified_template_folder, exist_ok=True)
 
-
-
 create_jpgs = True # Create jpgs for the files that passed the filtering
 
 # Session and Template Paths
-ROI_ID = ""
+ROI_ID = "" # set this if you have a session with multiple ROIs or leave it as None if you want to use only the first ROI
 
 # Step 2. Define the session directory and the template path
 session_dir = r'C:\development\doodleverse\coastseg\CoastSeg\data\ID_1_datetime11-04-24__04_30_52_original_mess_with'
@@ -151,7 +150,7 @@ new_config_path = file_utils.save_coregistered_config(config_path,coregistered_d
 df = filter_coregistration(result_json_path,coregistered_dir,csv_path,filtering_settings)
 
 # Move the files that failed the filtering to a new directory in coregistered directory
-failed_coregs = df[~df['filter_passed']].groupby('satellite')['filename'].apply(list)
+failed_coregs = df[~df['filter_passed']].groupby('satellite')['filename'].apply(list).to_dict()
 file_utils.process_failed_coregistrations(failed_coregs, coregistered_dir, session_dir,replace=False, copy_only=False, move_only=True, subfolder_name='ms')
 
 # Copy remaining files (swir,pan,mask,meta) to the coregistered directory. If replace replace_failed_files = true copy the unregistered versions of these files
@@ -169,4 +168,9 @@ config = file_utils.get_config(new_config_path)
 
 # rename sat_list to satname to make it work with create_coregistered_jpgs
 inputs['satname'] = inputs.pop('sat_list')
-file_utils.create_coregistered_jpgs(inputs, settings = config['settings'])
+file_utils.create_coregistered_jpgs(inputs, settings = config['settings'], pansharpen_all_bands = pansharpen_all_bands)
+
+
+print(f"\n\nCoregistration complete! You can find all coregistered outputs in the following directory: {coregistered_dir}")
+print(f"\nDetails of the transformation results are available in this file: 'transformation_results.json' at: {result_json_path}")
+print(f"\nA CSV file listing all applied filters to the files, 'filtered_files.csv', is located at: {csv_path}")
