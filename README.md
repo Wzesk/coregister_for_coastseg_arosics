@@ -161,7 +161,8 @@ sorted_jpg_path = r'C:\development\doodleverse\coastseg\CoastSeg\data\ID_1_datet
 Outlier filtering is performed by reading the results of coregistering all the images in a dataset and filtering out bad shifts relative to the other files in the dataset.
 To filter a dataset used the `filter_coregistration` function that takes the filter_settings as an input. The  `filter_coregistration` function will apply the filters in the order the settings are listed below:
 
-1. **shift_reliability**: Filters out shifts whole shift reliability, which is calculated during coregistration, is below the percentage.
+1. **shift_reliability**: Filters out any images whole shift reliability, which is calculated during coregistration, is below this percentage. 
+- Generally the lower this value is (40% or lower indicates that the coregistration was probably not successful and the shifts are incorrect)
 2. **window_size** : Filters out any images whose window size used to coregister was below this size. Typically the smaller the window the less accurate the coregistration.
 3. **max_shift_meters** : Filters out any images where the predicted shift to coregister the image to the target was above this value.
 4. **z_score_threshold** : Filters out shifts by z score. The z score is the combined z score of the x and y pixel shifts for each image.
