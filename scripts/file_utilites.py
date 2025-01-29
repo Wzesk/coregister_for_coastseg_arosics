@@ -100,6 +100,21 @@ def delete_folder_contents(folder_path):
         print(f"Error deleting contents of folder {folder_path}: {e}")
 
 def save_coregistered_config(config_path,output_dir,settings:dict,new_config_path:str=""):
+    """
+    Save the coregistered configuration to a new JSON file.
+
+    This function opens an existing configuration file, modifies it to include
+    the coregistered directory as the new sitename for each ROI ID, and adds
+    the coregistered settings under 'coregistered settings'. The modified configuration is then saved to a
+    new file in the specified output directory.
+    Parameters:
+    - config_path (str): The path to the existing configuration JSON file.
+    - output_dir (str): The directory where the new configuration file will be saved.
+    - settings (dict): A dictionary containing the coregistered settings to be added to the configuration.
+    - new_config_path (str, optional): The path to save the new configuration file. If not provided, the file will be saved as 'config.json' in the output directory.
+    Returns:
+    - str: The path to the newly saved configuration file.
+    """
     #open the config.json file, modify it to save the coregistered directory as the new sitename and add the coregistered settings
     with open(config_path, 'r') as f:
         config = json.load(f)
@@ -119,15 +134,6 @@ def save_coregistered_config(config_path,output_dir,settings:dict,new_config_pat
         json.dump(config, f, indent=4)
 
     return new_config_path
-
-def get_config(config_path,roi_id=None):
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    if roi_id:
-        if roi_id not in config:
-            raise ValueError(f"ROI ID {roi_id} not found in config file.")
-        config = config[roi_id]
-    return config
 
 def copy_remaining_tiffs(df,coregistered_dir,session_dir,satellites,replace_failed_files=False):
     """
@@ -152,27 +158,23 @@ def copy_remaining_tiffs(df,coregistered_dir,session_dir,satellites,replace_fail
         copy_meta_for_satellites(filenames, coregistered_dir, session_dir, satellites)
 
 
-
-def save_coregistered_config(config_path,output_dir,settings:dict):
-    #open the config.json file, modify it to save the coregistered directory as the new sitename and add the coregistered settings
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-
-    # update the sitename for each ROI ID
-    roi_ids = config.get('roi_ids', [])
-    for roi_id in roi_ids:
-        inputs = config[roi_id]
-        inputs.update({'sitename': config[roi_id]['sitename'] + os.path.sep + 'coregistered'})
-    config.update({'coregistered_settings': settings})
-
-    new_config_path = os.path.join(output_dir, 'config.json')
-    # write the config to the coregistered directory
-    with open(new_config_path, 'w') as f:
-        json.dump(config, f, indent=4)
-
-    return new_config_path
-
 def get_config(config_path,roi_id=None):
+    """
+    Load and return configuration data from a JSON file.
+
+    If the roi_id is provided, return the configuration data for the specified ROI ID.
+
+    Parameters:
+    config_path (str): The path to the JSON configuration file.
+    roi_id (str, optional): The region of interest (ROI) ID to extract from the configuration. 
+                            If not provided, the entire configuration is returned.
+
+    Returns:
+    dict: The configuration data. If roi_id is provided, returns the configuration for the specified ROI ID.
+
+    Raises:
+    ValueError: If the specified ROI ID is not found in the configuration file.
+    """
     with open(config_path, 'r') as f:
         config = json.load(f)
     if roi_id:
