@@ -6,8 +6,9 @@ import re
 import numpy as np
 from collections import OrderedDict
 from enum import Enum
+from tqdm import tqdm
 
-from coastsat import SDS_preprocess
+import jpg_utilities
 
 class Satellite(Enum):
     L5 = 'L5'
@@ -182,29 +183,6 @@ def get_config(config_path,roi_id=None):
             raise ValueError(f"ROI ID {roi_id} not found in config file.")
         config = config[roi_id]
     return config
-
-def copy_remaining_tiffs(df,coregistered_dir,session_dir,satellites,replace_failed_files=False):
-    """
-    Applies shifts to TIFF files based on the provided DataFrame and copies unregistered files to the coregistered directory.
-    Parameters:
-    df (pandas.DataFrame): DataFrame containing information about the files, including whether they passed filtering.
-    coregistered_dir (str): Directory where the coregistered files will be stored.
-    session_dir (str): Directory of the current session containing the original files.
-    satellites (list): List of satellite names to process.
-    replace_failed_files (bool): Whether to replace failed coregistrations with the original unregistered files.
-    Returns:
-    None
-    """    
-    # this means that all the files should be copied over to the coregistered file whether the coregistration passed or not
-    if replace_failed_files:
-        # Copy the remaining unregistered files for the swir, mask, meta and pan directories to the coregistered directory
-        filenames = df['filename']  # this copies all files regardless of whether they passed the filtering
-        copy_files_for_satellites(filenames, coregistered_dir, session_dir, satellites,)
-    else:
-        # Only copy the meta directories to the coregistered directory for the files that passed the filtering
-        filenames = df[df['filter_passed']==True]['filename']
-        copy_meta_for_satellites(filenames, coregistered_dir, session_dir, satellites)
-
 
 def save_coregistered_results(results, WINDOW_SIZE, template_path, result_json_path, settings,satellite:str="") -> OrderedDict:
     """
@@ -466,10 +444,10 @@ def moved_files(failed_coregs, coregistered_dir, copy_only=True, move_only=False
             if os.path.exists(src):
                 if copy_only:
                     shutil.copy(src, dst)
-                    print(f"Copied {filename} to {dst}")
+                    # print(f"Copied {filename} to {dst}")
                 elif move_only:
                     shutil.move(src, dst)
-                    print(f"Moved {filename} to {dst}")
+                    # print(f"Moved {filename} to {dst}")
 
 def move_failed_files(failed_coregs, coregistered_dir,source_dir:str):
     """
@@ -485,17 +463,14 @@ def move_failed_files(failed_coregs, coregistered_dir,source_dir:str):
     failed_dir = os.path.join(coregistered_dir, 'failed_coregistration')
     os.makedirs(failed_dir, exist_ok=True)
 
-
-    for filename in failed_coregs:
+    for filename in tqdm(failed_coregs, desc="Moving failed coregistration files"):
         print(f"filenames: {filename}")
         src = os.path.join(source_dir, filename)
         dst = os.path.join(failed_dir, filename)
-        print(f"src: {src}")
-        print(f"dst: {dst}")
         if os.path.exists(src):
             if not os.path.exists(dst):
                 shutil.move(src, dst)
-                print(f"Moved {filename} to {dst}")
+
 
 
 def handle_failed_coregs_per_satellite(failed_coregs, coregistered_dir, copy_only=True, move_only=False):
@@ -504,11 +479,17 @@ def handle_failed_coregs_per_satellite(failed_coregs, coregistered_dir, copy_onl
     This is specifically designed to work with CoastSat and CoastSeg sessions.
 
     Parameters:
-        failed_coregs (dict): A dictionary where keys are satellite names and values are lists of filenames that failed coregistration.
+        failed_coregs (dict) : A dictionary where keys are satellite names and values are lists of filenames that failed coregistration.
         coregistered_dir (str): The base directory containing coregistered satellite data.
         copy_only (bool): If True, files will be copied to the failed directory. Defaults to True.
         move_only (bool): If True, files will be moved to the failed directory. Defaults to False.
     """
+    # Calculate the total number of files to be processed
+    total_files = sum(len(filenames) for filenames in failed_coregs.values() if isinstance(filenames, (list, np.ndarray)))
+
+    # Initialize a single tqdm progress bar for all files
+    pbar = tqdm(total=total_files, desc='Moving bad coregistrations', unit='file')
+
     for satellite, filenames in failed_coregs.items():
         # Create a directory for the satellite's failed coregistration
         failed_dir = os.path.join(coregistered_dir, 'failed_coregistration', satellite)
@@ -524,10 +505,13 @@ def handle_failed_coregs_per_satellite(failed_coregs, coregistered_dir, copy_onl
             if os.path.exists(src):
                 if copy_only:
                     shutil.copy(src, dst)
-                    print(f"Copied {filename} to {dst}")
                 elif move_only:
                     shutil.move(src, dst)
-                    print(f"Moved {filename} to {dst}")
+            pbar.update(1)  # Update the progress bar after each file is processed
+            pbar.set_postfix(file=f"{satellite}/{filename}", refresh=True)
+
+    pbar.close()  # Ensure the progress bar is properly closed after all files are processed
+
 
 def copy_original_to_coregistered_per_satellite(failed_coregs, unregistered_dir, coregistered_dir,subfolder_name = 'ms'):
     """
@@ -811,7 +795,7 @@ def copy_meta_for_satellites(filenames:list[str],coreg_dir,unregistered_dir,sate
     If the satellite is 'Planet', it prints a message indicating that Planet files are not yet supported.
     """
     # make a subdirectory for each satellite
-    for satname in satellites:
+    for satname in tqdm(satellites,desc="Copying meta files for each satellite directory"):
         meta_dir = os.path.join(unregistered_dir, satname, 'meta')
         if not os.path.exists(meta_dir):
             continue
@@ -890,7 +874,7 @@ def get_filepaths_to_folders(inputs, satname,coregistered_name:str=None):
     return filepath
 
 
-def create_coregistered_jpgs(inputs, settings: dict):
+def create_coregistered_jpgs(inputs, settings: dict,pansharpen_all_bands:bool=True):
     """
     Creates coregistered JPEG images from multispectral (ms) TIFF file for each satellite in the given directory.
 
@@ -903,6 +887,9 @@ def create_coregistered_jpgs(inputs, settings: dict):
             - "cloud_threshold" (float, optional): Threshold for cloud detection. Defaults to 0.99.
             - "cloud_mask_issue" (bool, optional): Flag indicating if there is an issue with the cloud mask. Defaults to False.
             - "apply_cloud_mask" (bool, optional): Flag indicating whether to apply the cloud mask. Defaults to True.
+        pansharpen_all_bands (bool, optional): Flag indicating whether to pansharpen all bands or use the CoastSat pansharpening method to create jgps
+                    If true, pansharpens all bands before creating jpgs.
+                    If False, pansharpens some of the bands before creating jpgs.
 
     Returns:
         None
@@ -914,7 +901,7 @@ def create_coregistered_jpgs(inputs, settings: dict):
     cloud_mask_issue = settings.get('cloud_mask_issue', False)
     apply_cloud_mask = settings.get('apply_cloud_mask', True)
 
-    for satname in inputs["satname"]:
+    for satname in tqdm(inputs["satname"], "Creating coregistered jpgs for each satellite"):
         # This gets the path to the ms, mask and swir/pan folders for each satellite
         tif_paths = get_filepaths_to_folders(inputs, satname)
         # this is the directory of the ms files which were coregistered
@@ -927,7 +914,7 @@ def create_coregistered_jpgs(inputs, settings: dict):
                     print(f"File not found: {filename}")
                     continue
                 
-                SDS_preprocess.save_single_jpg(
+                jpg_utilities.save_single_jpg(
                     filename= filename,#filename=im_fn["ms"],
                     tif_paths=tif_paths,
                     satname=satname,
@@ -937,4 +924,5 @@ def create_coregistered_jpgs(inputs, settings: dict):
                     filepath_data=inputs["filepath"],
                     collection='C02',
                     apply_cloud_mask=apply_cloud_mask,
+                    pansharpen_all_bands=pansharpen_all_bands,
                 )
