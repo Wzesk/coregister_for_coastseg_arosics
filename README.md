@@ -2,6 +2,14 @@
 
 This script collection utilizes the arosics package to enable global co-registration for directories containing TIFF files. Included are specialized scripts tailored for integration with CoastSeg sessions as well as additional scripts to co-register imagery.
 
+This repository includes functions that can be used to:
+1. Perform global coregistration with arosics
+2. Filter out bad coregisteration results 
+3. Apply coregisteration to coastseg sessions
+  - Coregisters each satellite's tiff files within a CoastSeg session
+  - Creates new jpgs based on the coregistered files
+  - Saves all the coregistered files to a new directory
+
 ## Compatible Satellites
 - PlanetScope
 - Landsat 5, 8, 9
