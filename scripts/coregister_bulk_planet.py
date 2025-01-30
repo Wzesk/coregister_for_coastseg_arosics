@@ -1,42 +1,38 @@
 # This script was written on 1/21/25
 # By Sharon Batiste
 
-# Example from global coregistration example on arosics documentation
-# -----------------------------------
-# from arosics import COREG
-
-# im_reference = '/path/to/your/ref_image.bsq'
-# im_target    = '/path/to/your/tgt_image.bsq'
-
-# CR = COREG(im_reference, im_target, wp=(354223, 5805559), ws=(256,256))
-# CR.calculate_spatial_shifts()
-# -----------------------------------
+# This script will coregister a directory of tiffs to a single reference image.
+# The coregistered images will be saved to a folder called "coregistered_planet" 
+# The coregistered images will be filtered and the results will be saved to a csv file called "filtered_files.csv".
+# The coregistration results will be saved to a json file called "coreg_results.json".
 
 # -------------
-# Excerpt from the arosics documentation: https://danschef.git-pages.gfz-potsdam.de/arosics/doc/usage/input_data_requirements.html
-# The no-data value of each image is automatically derived from the image corners. However, this may fail if the actual no-data value is not present within a 3x3 matrix at the image corners.
-#  User provided no-data values will speed up the computation and avoid wrongly derived values.
+# Note: In order to use arosics the nodata values cannot be set to -inf and inf & both tiffs must be in the same CRS. 
+# This script takes care of that. If you want to learn more read the documentation below:
+# Excerpt from the arosics documentation:
+#   "The no-data value of each image is automatically derived from the image corners. However, this may fail if the actual no-data value is not present within a 3x3 matrix at the image corners.
+#    User provided no-data values will speed up the computation and avoid wrongly derived values."
+#    From : https://danschef.git-pages.gfz-potsdam.de/arosics/doc/usage/input_data_requirements.html
 # -------------
 
-from helpers import *
-from arosics_filter import *
 import os
 import glob
-from tqdm import tqdm
+from helpers import *
+from arosics_filter import *
+import file_utilites as file_utils
 
 # 1. Create a folder to save the coregistered images
-output_folder = "coregistered_planet"
+coregistered_dir = "coregistered_planet"
 # This is the directory to save any of the targets that have been modified
 modified_target_folder = "modified_targets"
 modified_template_folder = "modified_templates"
-rescaled_target_folder = "rescaled_targets"
   
-os.makedirs(output_folder, exist_ok=True)
+os.makedirs(coregistered_dir, exist_ok=True)
 os.makedirs(modified_target_folder, exist_ok=True)
-os.makedirs(rescaled_target_folder, exist_ok=True)
 os.makedirs(modified_template_folder, exist_ok=True)
 
 # Step 2a. Make a set of settings to coregitser the target to the reference
+# If you want to use other arosics coregister settings see here: https://danschef.git-pages.gfz-potsdam.de/arosics/doc/arosics.html#module-arosics.CoReg
 coregister_settings = {
     "ws": (256, 256), # window size
     "nodata":(0,0),
@@ -64,7 +60,7 @@ target_folder = r'C:\development\coastseg-planet\downloads\UNALAKLEET_pier_cloud
 # preprocess the reference image
 modified_reference_path = os.path.join(modified_template_folder, os.path.basename(im_reference))
 im_reference = update_nodata_value(im_reference, modified_reference_path, new_nodata=0)
-os.makedirs("modified_targets", exist_ok=True)
+
 
 # Step 4. Coregister the images in the target folder
 # a. match files that match the pattern
@@ -72,7 +68,7 @@ pattern = '*MS_toar_clip.tif'
 # get files that match the pattern with glob
 tif_files = glob.glob(os.path.join(target_folder, pattern))
 # b. coregister the files
-coreg_results = coregister_files(tif_files[:4],im_reference,output_folder,modified_target_folder,coregister_settings,desc="Coregistering Images")
+coreg_results = coregister_files(tif_files,im_reference,coregistered_dir,modified_target_folder,coregister_settings,desc="Coregistering Images")
 # c. add the settings to the coreg_results under the key "coregister_settings"
 coreg_results.append({"settings":coregister_settings})
 #d. merge the list of dictionaries into a single dictionary
@@ -80,19 +76,28 @@ coreg_results = merge_list_of_dicts(coreg_results)
 
 
 # Step 5. Save the coregistered Result to a json file
-json_save_path = os.path.join(output_folder, "coreg_results.json")
-print(f"Saving the coregistered results to {json_save_path}")
-save_to_json(coreg_results, json_save_path)
+result_json_path = os.path.join(coregistered_dir, "coreg_results.json")
+print(f"Saving the coregistered results to {result_json_path}")
+save_to_json(coreg_results, result_json_path)
 
 #Step 6. Filter the coregistration results
-csv_path = os.path.join(output_folder, "filtered_files.csv")
-df = filter_coregistration(json_save_path,output_folder,csv_path,filtering_settings)
+csv_path = os.path.join(coregistered_dir, "filtered_files.csv")
+df = filter_coregistration(result_json_path,coregistered_dir,csv_path,filtering_settings)
 failed_coregs = list(df[~df['filter_passed']]['filename'].values)
 
-bad_folder = os.path.join(output_folder, "failed_coregistration")
+bad_folder = os.path.join(coregistered_dir, "failed_coregistration")
 os.makedirs(bad_folder, exist_ok=True)
 
 failed_coregs = list(df[~df['filter_passed']]['filename'].values)
 print(f"Number of failed coregistrations: {len(failed_coregs)}")
+print(f"Total number of coregistrations: {len(df)}")
 
-move_files_to_folder(failed_coregs,output_folder,bad_folder,move_only=True)
+move_files_to_folder(failed_coregs,coregistered_dir,bad_folder,move_only=True)
+
+print(f"\n\nCoregistration complete! You can find all coregistered outputs in the following directory: {coregistered_dir}")
+print(f"\nDetails of the transformation results are available in this file: 'transformation_results.json' at: {result_json_path}")
+print(f"\nA CSV file listing all applied filters to the files, 'filtered_files.csv', is located at: {csv_path}")
+
+# deletes the modified target folder and the modified template folder
+file_utils.delete_folder(modified_target_folder)
+file_utils.delete_folder(modified_template_folder)
