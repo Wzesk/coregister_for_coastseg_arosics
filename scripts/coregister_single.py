@@ -1,10 +1,17 @@
 # This script was written on 1/27/25
 # By Sharon Batiste
 
-# Example script to coregister a single image to a reference image.
+# This script will coregister a tiff to a single template/reference image.
+# The coregistered images will be saved to a folder called "coregistered_planet" 
+# The coregistration results will be saved to a json file called "coreg_results.json".
 
-# This script saves the coregistered image to a folder called "coregistered" and the modified target images to a folder called "modified_targets"
-
+# -------------
+# Note: In order to use arosics the nodata values cannot be set to -inf and inf & both tiffs must be in the same CRS. 
+# This script takes care of that. If you want to learn more read the documentation below:
+# Excerpt from the arosics documentation:
+#   "The no-data value of each image is automatically derived from the image corners. However, this may fail if the actual no-data value is not present within a 3x3 matrix at the image corners.
+#    User provided no-data values will speed up the computation and avoid wrongly derived values."
+#    From : https://danschef.git-pages.gfz-potsdam.de/arosics/doc/usage/input_data_requirements.html
 # -------------
 
 from helpers import *

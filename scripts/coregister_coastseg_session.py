@@ -1,16 +1,11 @@
 # This script was written on 1/21/25
 # By Sharon Batiste
 
-# Example from global coregistration example on arosics documentation
-# -----------------------------------
-# from arosics import COREG
-
-# im_reference = '/path/to/your/ref_image.bsq'
-# im_target    = '/path/to/your/tgt_image.bsq'
-
-# CR = COREG(im_reference, im_target, wp=(354223, 5805559), ws=(256,256))
-# CR.calculate_spatial_shifts()
-# -----------------------------------
+# This script will coregister a directory of tiffs to a single template/reference  image.
+# The coregistered images will be saved to a folder called "coregistered" within the session directory.
+# The coregistered images will be filtered and the results will be saved to a csv file called "filtered_files.csv" within the "coregistered" folder.
+# Any tiffs that failed the coregistration will be saved to a folder called "failed_coregistration" within the "coregistered" folder.
+# The coregistration results will be saved to a json file called "coreg_results.json" within the "coregistered" folder.
 
 # -------------
 # Excerpt from the arosics documentation: https://danschef.git-pages.gfz-potsdam.de/arosics/doc/usage/input_data_requirements.html

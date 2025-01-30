@@ -1,9 +1,10 @@
 # This script was written on 1/21/25
 # By Sharon Batiste
 
-# This script will coregister a directory of tiffs to a single reference image.
+# This script will coregister a directory of tiffs to a single template/reference  image.
 # The coregistered images will be saved to a folder called "coregistered_planet" 
 # The coregistered images will be filtered and the results will be saved to a csv file called "filtered_files.csv".
+# Any tiffs that failed the coregistration will be saved to a folder called "failed_coregistration" within the "coregistered_planet" folder.
 # The coregistration results will be saved to a json file called "coreg_results.json".
 
 # -------------
