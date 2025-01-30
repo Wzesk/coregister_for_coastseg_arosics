@@ -17,12 +17,9 @@ output_folder = "coregistered"
 # This is the directory to save any of the targets that have been modified
 modified_target_folder = "modified_targets"
 modified_template_folder = "modified_templates"
-rescaled_target_folder = "rescaled_targets"
   
 os.makedirs(output_folder, exist_ok=True)
 os.makedirs(modified_target_folder, exist_ok=True) # This is the directory to save any of the targets that have been modified
-os.makedirs("modified_targets", exist_ok=True)
-os.makedirs(rescaled_target_folder, exist_ok=True)
 os.makedirs(modified_template_folder, exist_ok=True)
 
 # Step 2a. Make a set of settings to coregitser the target to the reference
@@ -59,5 +56,4 @@ save_to_json(coreg_result, json_save_path)
 # Step 6. Clean Up 
 # Remove the modified reference image and the modified target image
 file_utils.delete_like_file(file_utils.get_root_name(im_target),modified_target_folder)
-file_utils.delete_like_file(file_utils.get_root_name(im_target),rescaled_target_folder)
 file_utils.delete_like_file(file_utils.get_root_name(im_reference),modified_template_folder)
