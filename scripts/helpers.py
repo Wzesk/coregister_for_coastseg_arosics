@@ -157,6 +157,18 @@ def coregister_file(im_reference, im_target,output_folder,modified_target_folder
     
 
 def coregister_files(tif_files, template_path, coregistered_dir,modified_target_folder, coregister_settings,desc='Detecting shifts for files:'):
+    """
+    Coregisters a list of TIFF files with a given template file and saves the results.
+    Parameters:
+    tif_files (list of str): List of paths to the target TIFF files to be coregistered.
+    template_path (str): Path to the template TIFF file.
+    coregistered_dir (str): Directory where the coregistered files will be saved.
+    modified_target_folder (str): Directory where the modified target files will be saved.
+    coregister_settings (dict): Dictionary containing settings for the coregistration process.
+    desc (str, optional): Description for the progress bar. Default is 'Detecting shifts for files:'.
+    Returns:
+    list: A list of results from the coregistration process for each file.
+    """
     results = []
     
     if tif_files == []:
