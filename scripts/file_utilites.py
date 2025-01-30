@@ -4,6 +4,7 @@ import json
 import shutil
 import re
 import numpy as np
+import pandas as pd
 from collections import OrderedDict
 from enum import Enum
 from tqdm import tqdm
@@ -16,6 +17,85 @@ class Satellite(Enum):
     L8 = 'L8'
     L9 = 'L9'
     S2 = 'S2'
+
+def update_meta_epsg(file_path:str, new_epsg:int):
+    """
+    Update the EPSG code in a metadata file.
+    This function reads a file, searches for a line that starts with 'epsg\t',
+    and updates the EPSG code to the new value provided. The modified content
+    is then written back to the file.
+    Args:
+        file_path (str): The path to the metadata file.
+        new_epsg (int): The new EPSG code to be set in the file.
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
+        IOError: If there is an error reading from or writing to the file.
+    """
+    # Read the original content from the file
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    
+    # Modify the epsg value
+    for i in range(len(lines)):
+        if lines[i].startswith('epsg\t'):
+            lines[i] = f'epsg\t{new_epsg}\n'
+            break
+    
+    # Write the modified content back to the file
+    with open(file_path, 'w') as file:
+        file.writelines(lines)
+
+def update_metadata_epsg_files(coregistered_dir, df):
+    """
+    Updates the epsg value in metadata files for a list of satellites.
+
+    This meant to be used after the CRS conversion and filtering steps have been completed.
+
+    Meant to update the meta folder in the coregistered directory.
+
+    Example structure
+    ROI
+    |__coregistered
+        |__S2
+            |__meta
+                |__2023-05-19-22-17-54_S2_ID_1_datetime11-04-24__04_30_52.txt
+                |__file2.txt
+        |__L8
+            |__meta
+                |__file1.txt
+                |__file2.txt
+
+    Parameters:
+    - coregistered_dir: Base directory where satellite directories are located.
+    - df: DataFrame containing filenames and satellite identifiers.
+    """
+    df = df[(df['CRS_converted'] == True) & (df['filter_passed'] == True)]
+    # if this is empty then return
+    if df.empty:
+        return
+
+    sat_list = df['satellite'].unique() 
+    # all the CRS have to be the same as the template CRS lets get the first one
+    template_crs = df['CRS'].iloc[0]
+    assert (df['CRS'] == template_crs).all() # double check that all the CRS are the same
+    # To update the epsg value in the meta file we only need the last part of the CRS
+    epsg = template_crs.split(':')[-1]
+
+    for sat in sat_list:
+        # Construct the directory path for the current satellite
+        sat_dir = os.path.join(coregistered_dir, sat)
+        
+        # Extract filenames for the current satellite from the DataFrame
+        filenames = df[df['satellite'] == sat]['filename']
+        
+        # Replace file extension from '_ms.tif' to '.txt'
+        filenames = filenames.str.replace('_ms.tif', '.txt', regex=False)
+        
+        # Update the epsg value in each file
+        for filename in filenames:
+            txt_path = os.path.join(sat_dir, 'meta', filename)
+            update_meta_epsg(txt_path, epsg)
+
 
 def get_root_name(file_path):
     """
@@ -157,6 +237,8 @@ def copy_remaining_tiffs(df,coregistered_dir,session_dir,satellites,replace_fail
         # Only copy the meta directories to the coregistered directory for the files that passed the filtering
         filenames = df[df['filter_passed']==True]['filename']
         copy_meta_for_satellites(filenames, coregistered_dir, session_dir, satellites)
+        # after copying the meta files, update the epsg value in the meta files based on the new CRS
+        update_metadata_epsg_files(coregistered_dir,df)
 
 
 def get_config(config_path,roi_id=None):
