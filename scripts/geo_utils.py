@@ -6,6 +6,7 @@ from tqdm import tqdm
 from rasterio.transform import Affine
 from rasterio.warp import reproject, Resampling
 from rasterio.warp import reproject, calculate_default_transform
+import helpers
 
 def apply_shifts_to_tiffs(df,coregistered_dir,session_dir,satellites:list=None,apply_shifts_filter_passed=True):
     """
@@ -159,9 +160,7 @@ def apply_shifts_to_satellite_files(df: pd.DataFrame, valid_files: list, src_dir
         if os.path.exists(src_path):
             # convert the shift 
             if new_crs:
-                new_crs_dst_folder = os.path.join(dst_dir, satname, folder_name,"new_crs")
-                os.makedirs(new_crs_dst_folder,exist_ok=True)
-                src_path = change_to_crs(new_crs, src_path, new_crs_dst_folder,keep_resolution=True)
+                src_path = helpers.convert_to_new_crs(src_path,new_crs,keep_resolution=True)
 
             apply_shift_to_tiff(src_path, dst_path, (shift_y, shift_x), verbose=verbose)
             # print(f"Applied shift to {os.path.basename(dst_path)}")
