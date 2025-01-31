@@ -24,7 +24,7 @@ Landsat 7 support is not included due to the striping glitch across much of the 
 ```bash
 conda create -n coreg python=3.11 -y
 conda activate coreg
-conda install -c conda-forge arosics gdal coastsat-package rasterio tqdm
+conda install -c conda-forge arosics gdal coastsat-package rasterio tqdm sqlite
 ```
 
 2. Activate your environment and git clone
