@@ -1,0 +1,18 @@
+{
+    "aoi": [
+        [
+            72.898,
+            5.379
+        ],
+        [
+            72.905,
+            5.3865
+        ]
+    ],
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-30",
+    "max_cloudy_pixel_percentage": 10.0,
+    "project_name": "Fenfushi",
+    "path": "geotools_sites/Fenfushi",
+    "periodic": "True"
+}
